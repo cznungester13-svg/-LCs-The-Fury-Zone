@@ -1,1 +1,13 @@
-# -LCs-The-Fury-Zone
+{
+  "name": "lcs-the-fury-zone-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
