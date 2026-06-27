@@ -1,5 +1,6 @@
 import express from 'express';
 import pg from 'pg';
+import productRoutes from './routes/productRoutes.js'; // Import the new routes
 
 const { Pool } = pg;
 const app = express();
@@ -11,6 +12,9 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false } // Required for secure cloud hosting connections
 });
+
+// Mount your product routes under the /api/products prefix
+app.use('/api/products', productRoutes);
 
 // A quick health-check route to ensure the server is responding
 app.get('/api/health', async (req, res) => {
