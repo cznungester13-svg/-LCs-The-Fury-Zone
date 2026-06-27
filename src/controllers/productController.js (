@@ -1,0 +1,51 @@
+import { pool } from '../server.js';
+
+export const createStoreProduct = async (req, res) => {
+  const { title, description, category_id, brand_id, size, color, price, weight, quantity } = req.body;
+
+  try {
+    // Start a SQL Transaction
+    await pool.query('BEGIN');
+
+    // 1. Insert the main product identity (Instantly STORE and ACTIVE)
+    const productQuery = `
+      INSERT INTO products (title, description, category_id, brand_id, seller_type, listing_status)
+      VALUES ($1, $2, $3, $4, 'STORE', 'ACTIVE')
+      RETURNING product_id;
+    `;
+    const productResult = await pool.query(productQuery, [title, description, category_id, brand_id]);
+    const productId = productResult.rows[0].product_id;
+
+    // 2. Insert the specific variant (Size and Color options)
+    const variantQuery = `
+      INSERT INTO product_variants (product_id, size, color, price, weight, is_active)
+      VALUES ($1, $2, $3, $4, $5, TRUE)
+      RETURNING variant_id;
+    `;
+    const variantResult = await pool.query(variantQuery, [productId, size, color, price, weight]);
+    const variantId = variantResult.rows[0].variant_id;
+
+    // 3. Insert into inventory to lock down stock counts
+    const inventoryQuery = `
+      INSERT INTO inventory (variant_id, quantity, reserved_quantity)
+      VALUES ($1, $2, 0);
+    `;
+    await pool.query(inventoryQuery, [variantId, quantity]);
+
+    // Save changes to database permanently
+    await pool.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: 'Store product, variant, and inventory created successfully!',
+      productId,
+      variantId
+    });
+
+  } catch (error) {
+    // Revert everything if an error occurs to keep data pristine
+    await pool.query('ROLLBACK');
+    console.error('Error in store product creation:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+};
