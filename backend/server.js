@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 
+// Routes
 import productsRouter from "./routes/products.js";
 import cartRouter from "./routes/cart.js";
 import checkoutRouter from "./routes/checkout.js";
@@ -14,12 +15,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Test route
+// Health check
 app.get("/", (req, res) => {
     res.send("🚀 Marketplace API is running");
 });
 
-// Routes
+// API Routes
 app.use("/api/products", productsRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/checkout", checkoutRouter);
@@ -28,5 +29,5 @@ app.use("/api/checkout", checkoutRouter);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
