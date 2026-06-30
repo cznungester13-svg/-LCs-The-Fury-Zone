@@ -364,3 +364,68 @@ CREATE TABLE product_attributes (
     key VARCHAR(100),
     value TEXT
 );
+-- =========================
+-- INVENTORY SYSTEM
+-- =========================
+
+-- WAREHOUSES (future-proof: multiple storage locations)
+CREATE TABLE warehouses (
+    warehouse_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    location TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- INVENTORY (current stock per product variant)
+CREATE TABLE inventory (
+    inventory_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    variant_id UUID NOT NULL REFERENCES product_variants(variant_id) ON DELETE CASCADE,
+    warehouse_id UUID REFERENCES warehouses(warehouse_id),
+
+    quantity INT NOT NULL DEFAULT 0,
+    reserved_quantity INT NOT NULL DEFAULT 0,
+
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(variant_id, warehouse_id)
+);
+
+-- INVENTORY TRANSACTIONS (full audit trail of stock changes)
+CREATE TABLE inventory_transactions (
+    transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    variant_id UUID NOT NULL REFERENCES product_variants(variant_id),
+    warehouse_id UUID REFERENCES warehouses(warehouse_id),
+
+    transaction_type VARCHAR(30) NOT NULL CHECK (
+        transaction_type IN (
+            'STOCK_IN',
+            'STOCK_OUT',
+            'RESERVE',
+            'RELEASE',
+            'ADJUSTMENT',
+            'RETURN'
+        )
+    ),
+
+    quantity INT NOT NULL,
+
+    reference_type VARCHAR(50),  -- e.g. ORDER, RETURN, MANUAL_ADJUSTMENT
+    reference_id UUID,
+
+    notes TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- LOW STOCK TRACKING (optional but powerful for admin dashboard)
+CREATE TABLE low_stock_alerts (
+    alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    variant_id UUID NOT NULL REFERENCES product_variants(variant_id),
+
+    threshold INT NOT NULL DEFAULT 5,
+    is_resolved BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
