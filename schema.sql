@@ -429,3 +429,127 @@ CREATE TABLE low_stock_alerts (
 
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- =========================
+-- ORDERS SYSTEM
+-- =========================
+
+-- ORDERS (main transaction record)
+CREATE TABLE orders (
+    order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL REFERENCES users(user_id),
+
+    order_number VARCHAR(50) UNIQUE,
+
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (
+        status IN (
+            'PENDING',
+            'PAID',
+            'PROCESSING',
+            'SHIPPED',
+            'DELIVERED',
+            'CANCELLED',
+            'REFUNDED'
+        )
+    ),
+
+    subtotal NUMERIC(10,2) NOT NULL DEFAULT 0,
+    tax NUMERIC(10,2) NOT NULL DEFAULT 0,
+    shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
+    total NUMERIC(10,2) NOT NULL DEFAULT 0,
+
+    shipping_address_id UUID REFERENCES user_addresses(address_id),
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ORDER ITEMS (snapshot of purchased products)
+CREATE TABLE order_items (
+    order_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    order_id UUID NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+
+    product_id UUID REFERENCES products(product_id),
+    variant_id UUID REFERENCES product_variants(variant_id),
+
+    product_name VARCHAR(255) NOT NULL,
+    variant_name VARCHAR(255),
+
+    quantity INT NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+
+    subtotal NUMERIC(10,2) NOT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ORDER STATUS HISTORY (full tracking timeline)
+CREATE TABLE order_status_history (
+    history_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    order_id UUID NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+
+    status VARCHAR(30) NOT NULL,
+
+    notes TEXT,
+
+    changed_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PAYMENTS (Stripe or other processor)
+CREATE TABLE payments (
+    payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    order_id UUID NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+
+    provider VARCHAR(50) DEFAULT 'STRIPE',
+
+    provider_payment_id VARCHAR(255),
+
+    amount NUMERIC(10,2) NOT NULL,
+
+    currency VARCHAR(10) DEFAULT 'USD',
+
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (
+        status IN ('PENDING', 'SUCCEEDED', 'FAILED', 'REFUNDED')
+    ),
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- REFUNDS
+CREATE TABLE refunds (
+    refund_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    payment_id UUID NOT NULL REFERENCES payments(payment_id) ON DELETE CASCADE,
+
+    amount NUMERIC(10,2) NOT NULL,
+
+    reason TEXT,
+
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (
+        status IN ('PENDING', 'APPROVED', 'REJECTED', 'COMPLETED')
+    ),
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- SELLER PAYOUTS (for marketplace/resale system)
+CREATE TABLE seller_payouts (
+    payout_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    seller_id UUID NOT NULL,
+
+    order_id UUID REFERENCES orders(order_id),
+
+    amount NUMERIC(10,2) NOT NULL,
+
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (
+        status IN ('PENDING', 'PROCESSING', 'PAID', 'FAILED')
+    ),
+
+    payout_method VARCHAR(50),
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
