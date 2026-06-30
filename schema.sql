@@ -250,3 +250,117 @@ CREATE TABLE notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- =========================
+-- CATALOG SYSTEM
+-- =========================
+
+-- DEPARTMENTS (top-level store sections)
+CREATE TABLE departments (
+    department_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- CATEGORIES (belong to departments)
+CREATE TABLE categories (
+    category_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    department_id UUID NOT NULL REFERENCES departments(department_id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(department_id, name)
+);
+
+-- SUBCATEGORIES (optional deeper structure)
+CREATE TABLE subcategories (
+    subcategory_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id UUID NOT NULL REFERENCES categories(category_id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(category_id, name)
+);
+
+-- BRANDS
+CREATE TABLE brands (
+    brand_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PRODUCTS (core listing table)
+CREATE TABLE products (
+    product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id UUID NOT NULL REFERENCES categories(category_id),
+    subcategory_id UUID REFERENCES subcategories(subcategory_id),
+
+    brand_id UUID REFERENCES brands(brand_id),
+
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
+    description TEXT,
+
+    base_price NUMERIC(10,2) NOT NULL DEFAULT 0,
+    cost_price NUMERIC(10,2),
+
+    status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (
+        status IN ('ACTIVE', 'INACTIVE', 'DRAFT', 'PENDING_APPROVAL')
+    ),
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PRODUCT VARIANTS (size, color, etc.)
+CREATE TABLE product_variants (
+    variant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
+
+    sku VARCHAR(100) UNIQUE,
+    variant_name VARCHAR(255), -- e.g. "Red / Large"
+
+    price NUMERIC(10,2),
+    attributes JSONB DEFAULT '{}'::jsonb, -- flexible (color, size, etc.)
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PRODUCT IMAGES
+CREATE TABLE product_images (
+    image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+    variant_id UUID REFERENCES product_variants(variant_id) ON DELETE CASCADE,
+
+    image_url TEXT NOT NULL,
+    alt_text VARCHAR(255),
+    sort_order INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PRODUCT TAGS
+CREATE TABLE product_tags (
+    tag_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) UNIQUE NOT NULL
+);
+
+-- PRODUCT TAG MAP
+CREATE TABLE product_tag_map (
+    product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+    tag_id UUID REFERENCES product_tags(tag_id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, tag_id)
+);
+
+-- PRODUCT ATTRIBUTES (flexible specs system)
+CREATE TABLE product_attributes (
+    attribute_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+
+    key VARCHAR(100),
+    value TEXT
+);
