@@ -553,3 +553,109 @@ CREATE TABLE seller_payouts (
 
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- =========================
+-- MARKETPLACE / SELLER SYSTEM
+-- =========================
+
+-- SELLER PROFILES (extends users into sellers)
+CREATE TABLE seller_profiles (
+    seller_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID UNIQUE NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+
+    store_name VARCHAR(255),
+    store_description TEXT,
+
+    seller_type VARCHAR(20) DEFAULT 'INDIVIDUAL' CHECK (
+        seller_type IN ('INDIVIDUAL', 'BUSINESS')
+    ),
+
+    rating NUMERIC(3,2) DEFAULT 0,
+    total_sales INT DEFAULT 0,
+
+    is_verified BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RESALE LISTINGS (user-generated marketplace items)
+CREATE TABLE resale_listings (
+    listing_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    seller_id UUID NOT NULL REFERENCES seller_profiles(seller_id) ON DELETE CASCADE,
+
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+
+    category_id UUID REFERENCES categories(category_id),
+
+    condition VARCHAR(30) DEFAULT 'USED' CHECK (
+        condition IN ('NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR')
+    ),
+
+    price NUMERIC(10,2) NOT NULL,
+
+    status VARCHAR(30) DEFAULT 'PENDING_APPROVAL' CHECK (
+        status IN ('PENDING_APPROVAL', 'ACTIVE', 'REJECTED', 'SOLD', 'PAUSED')
+    ),
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- LISTING IMAGES
+CREATE TABLE listing_images (
+    image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    listing_id UUID NOT NULL REFERENCES resale_listings(listing_id) ON DELETE CASCADE,
+
+    image_url TEXT NOT NULL,
+    sort_order INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- LISTING APPROVALS (admin moderation workflow)
+CREATE TABLE listing_approvals (
+    approval_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    listing_id UUID NOT NULL REFERENCES resale_listings(listing_id) ON DELETE CASCADE,
+
+    admin_id UUID REFERENCES users(user_id),
+
+    status VARCHAR(30) DEFAULT 'PENDING' CHECK (
+        status IN ('PENDING', 'APPROVED', 'REJECTED')
+    ),
+
+    notes TEXT,
+
+    reviewed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- SELLER BALANCES (earnings tracking before payout)
+CREATE TABLE seller_balances (
+    balance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    seller_id UUID NOT NULL REFERENCES seller_profiles(seller_id),
+
+    available_balance NUMERIC(10,2) DEFAULT 0,
+    pending_balance NUMERIC(10,2) DEFAULT 0,
+
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- COMMISSIONS (platform fee tracking)
+CREATE TABLE commissions (
+    commission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    order_id UUID REFERENCES orders(order_id),
+    listing_id UUID REFERENCES resale_listings(listing_id),
+
+    seller_id UUID NOT NULL REFERENCES seller_profiles(seller_id),
+
+    amount NUMERIC(10,2) NOT NULL,
+    rate NUMERIC(5,2) NOT NULL, -- percentage fee
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
