@@ -173,4 +173,80 @@ CREATE TABLE audit_logs (
     action TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- =========================
+-- USERS & SECURITY
+-- =========================
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- USERS TABLE
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name VARCHAR(255),
+    phone VARCHAR(30),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- USER PROFILES (extended info)
+CREATE TABLE user_profiles (
+    profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    avatar_url TEXT,
+    bio TEXT,
+    date_of_birth DATE,
+    preferences JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ADDRESSES
+CREATE TABLE user_addresses (
+    address_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    label VARCHAR(50), -- Home, Work, etc.
+    line1 VARCHAR(255) NOT NULL,
+    line2 VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(100) DEFAULT 'USA',
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ROLES (admin, seller, customer)
+CREATE TABLE roles (
+    role_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- USER ROLES (many-to-many)
+CREATE TABLE user_roles (
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    role_id UUID REFERENCES roles(role_id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- AUDIT LOGS (admin tracking system actions)
+CREATE TABLE audit_logs (
+    log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id),
+    action TEXT NOT NULL,
+    entity_type VARCHAR(100),
+    entity_id UUID,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- NOTIFICATIONS
+CREATE TABLE notifications (
+    notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    type VARCHAR(50),
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
