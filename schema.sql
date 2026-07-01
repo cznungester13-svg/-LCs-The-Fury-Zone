@@ -659,3 +659,95 @@ CREATE TABLE commissions (
 
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- =========================
+-- ADMIN & SYSTEM SETTINGS
+-- =========================
+
+-- SYSTEM SETTINGS (global configuration for platform)
+CREATE TABLE system_settings (
+    setting_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value TEXT,
+
+    description TEXT,
+
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ANALYTICS EVENTS (for tracking user behavior)
+CREATE TABLE analytics_events (
+    event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+
+    event_type VARCHAR(100) NOT NULL, 
+    -- examples: VIEW_PRODUCT, ADD_TO_CART, CHECKOUT_STARTED, PURCHASE_COMPLETED
+
+    metadata JSONB DEFAULT '{}'::jsonb,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ADMIN ACTION LOGS (more detailed than audit_logs)
+CREATE TABLE admin_actions (
+    action_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    admin_id UUID REFERENCES users(user_id),
+
+    action_type VARCHAR(100) NOT NULL,
+    -- examples: APPROVE_LISTING, DELETE_PRODUCT, BAN_USER, REFUND_ORDER
+
+    target_type VARCHAR(100),
+    target_id UUID,
+
+    notes TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- FEATURE FLAGS (turn features on/off without redeploying)
+CREATE TABLE feature_flags (
+    flag_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    name VARCHAR(100) UNIQUE NOT NULL,
+    is_enabled BOOLEAN DEFAULT FALSE,
+
+    description TEXT,
+
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- NOTIFICATION TEMPLATES (for email/SMS system later)
+CREATE TABLE notification_templates (
+    template_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    name VARCHAR(100) UNIQUE NOT NULL,
+
+    subject TEXT,
+    body TEXT,
+
+    channel VARCHAR(30) DEFAULT 'EMAIL' CHECK (
+        channel IN ('EMAIL', 'SMS', 'IN_APP')
+    ),
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- PLATFORM METRICS SNAPSHOT (optional pre-aggregated stats)
+CREATE TABLE platform_metrics (
+    metric_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    metric_date DATE NOT NULL,
+
+    total_users INT DEFAULT 0,
+    total_orders INT DEFAULT 0,
+    total_revenue NUMERIC(12,2) DEFAULT 0,
+    total_listings INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(metric_date)
+);
