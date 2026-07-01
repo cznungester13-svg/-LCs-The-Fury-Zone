@@ -9,7 +9,7 @@ const app = express();
 
 app.use(express.json());
 
-// Mount routes
+// Routes
 app.use('/api/products', productRoutes);
 
 // Health check
